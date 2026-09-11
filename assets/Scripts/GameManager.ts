@@ -1,10 +1,10 @@
 import { _decorator, Button, Component, EventHandler, Label, Node } from 'cc';
-import { ReelManager } from './ReelManager';
+import { Slot } from './Slot';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameManager')
 export class GameManager extends Component {
-    @property({ type: ReelManager }) reelManager: ReelManager = null;
+    @property({ type: Slot }) slotMachine: Slot = null;
     @property({ type: Button }) spinButton: Button = null;
     @property({ type: Label }) scoreLabel: Label = null;
     state: EGameState = EGameState.Ready;
@@ -33,12 +33,11 @@ export class GameManager extends Component {
             case EGameState.Ready:
                 this.state = EGameState.Spining;
                 this.spinButton.interactable = false;
-                this.reelManager.startSpin();
-                this.state = EGameState.Spining;
+                this.slotMachine.startSpin();
                 break;
 
             case EGameState.Spining:
-                this.reelManager.stopSpin();
+                this.slotMachine.stopSpin();
                 break;
 
             default:

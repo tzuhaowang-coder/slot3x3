@@ -3,12 +3,9 @@ import { Reel } from './Reel/Reel';
 const { ccclass, property } = _decorator;
 
 @ccclass('ReelManager')
-export class ReelManager extends Component {
-    stopSpin() {
-        throw new Error('Method not implemented.');
-    }
-    @property({ type: Prefab })
-    ReelPrefab: Prefab = null;
+export class Slot extends Component {
+    @property({ type: Prefab }) ReelPrefab: Prefab = null;
+    @property({ type: Node }) mask: Node = null;
 
     reels: Reel[] = [];
 
@@ -16,15 +13,19 @@ export class ReelManager extends Component {
     reelHeight: number = 256;
 
     start() {
-
+        this.initReels();
     }
 
     // 生成輪子
     initReels() {
+        let count = -1;
+        // 從左到右生成3個輪子  0,1,2
         for (let i = 0; i < 3; i++) {
             const reel = instantiate(this.ReelPrefab);
-            this.node.addChild(reel);
+            this.mask.addChild(reel);
             // todo: Set position
+            reel.setPosition(this.reelWidth * count, 0);
+            count++;
             this.reels.push(reel.getComponent(Reel));
         }
     }
@@ -40,6 +41,9 @@ export class ReelManager extends Component {
         }
     }
 
+    async stopSpin() {
+        throw new Error('Method not implemented.');
+    }
 
 }
 
