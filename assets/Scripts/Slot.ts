@@ -1,20 +1,17 @@
 import { _decorator, Component, instantiate, Node, Prefab, tween } from 'cc';
 import { Reel } from './Reel/Reel';
+import { EGameState, GameManager } from './GameManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('ReelManager')
 export class Slot extends Component {
     @property({ type: Prefab }) ReelPrefab: Prefab = null;
     @property({ type: Node }) mask: Node = null;
+    game: GameManager = null;
 
     reels: Reel[] = [];
 
     reelWidth: number = 256;
-    reelHeight: number = 256;
-
-    start() {
-        this.initReels();
-    }
 
     // 生成輪子
     initReels() {
@@ -42,8 +39,44 @@ export class Slot extends Component {
     }
 
     async stopSpin() {
-        throw new Error('Method not implemented.');
+        for (let index = 0; index < this.reels.length; index++) {
+            const reel = this.reels[index];
+            reel.stop();
+            await new Promise<void>((resolve) => {
+                tween(this.node).delay(0.3).call(() => { resolve(); })
+                    .start();
+            });
+        }
     }
 
+    initial(manager: GameManager) {
+        this.game = manager;
+        this.initReels();
+    }
+    updateHandler(state: EGameState, dt: number) {
+        switch (state) {
+            case EGameState.Ready:
+                this.reels.forEach(reel => {
+
+                })
+                break;
+            case EGameState.Spinning:
+                this.reels.forEach(reel => {
+                    reel.spinningHandler(dt);
+                });
+                break;
+            case EGameState.Stopping:
+                this.reels.forEach(reel => {
+                    reel.stoppingHandler(dt);
+                });
+                // 如果三個輪子都停下，換狀態
+                if (this.reels.every(r => { return r.reelStopped; })) {
+                    this.game.state = EGameState.Ready;
+                }
+                break;
+            default:
+                break;
+        }
+    }
 }
 

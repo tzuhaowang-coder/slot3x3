@@ -3,8 +3,8 @@ const { ccclass, property } = _decorator;
 
 @ccclass('SlotSymbol')
 export class SlotSymbol extends Component {
-
     symbol: Sprite;
+    settingIndex = -1;
 
     start(): void {
         this.symbol = this.getComponent(Sprite);
@@ -14,6 +14,12 @@ export class SlotSymbol extends Component {
 
         this.symbol.spriteFrame = newSprite;
     }
+
+    moveUpAndChangeRandomSymbol(offset: number, sprite: SpriteFrame) {
+        this.node.setPosition(0, offset + this.node.position.y);
+        this.changeSymbol(sprite);
+    }
+
 
 }
 
