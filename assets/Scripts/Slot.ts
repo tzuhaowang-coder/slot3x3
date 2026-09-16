@@ -56,9 +56,6 @@ export class Slot extends Component {
     updateHandler(state: EGameState, dt: number) {
         switch (state) {
             case EGameState.Ready:
-                this.reels.forEach(reel => {
-
-                })
                 break;
             case EGameState.Spinning:
                 this.reels.forEach(reel => {
@@ -71,8 +68,10 @@ export class Slot extends Component {
                 });
                 // 如果三個輪子都停下，換狀態
                 if (this.reels.every(r => { return r.reelStopped; })) {
-                    this.game.state = EGameState.Ready;
+                    this.game.state = EGameState.Scoring;
                 }
+                break;
+            case EGameState.Scoring:
                 break;
             default:
                 break;

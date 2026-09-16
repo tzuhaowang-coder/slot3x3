@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, EditBox, EventHandler, instantiate, Label, Node, NodePool } from 'cc';
+import { _decorator, Button, Component, EditBox, EventHandler, instantiate, Label, Node, NodePool, tween } from 'cc';
 import { Slot } from './Slot';
 import { Reel } from './Reel/Reel';
 const { ccclass, property } = _decorator;
@@ -16,6 +16,7 @@ export class GameManager extends Component {
     @property({ type: Node }) lineNode: Node = null;
     @property({ type: Node }) lineParent: Node = null;
     private _pool: NodePool = new NodePool();
+
     public getLine(): Node {
         let lineNode: Node = null!;
 
@@ -33,7 +34,7 @@ export class GameManager extends Component {
         this._pool.put(lineNode);
     }
 
-    resultArray: number[] = [0, 1, 1,
+    resultArray: number[] = [0, 0, 0,
         1, 2, 2,
         2, 0, 0];
 
@@ -47,7 +48,19 @@ export class GameManager extends Component {
     // 0: 都沒中、1: 橫1、2: 橫2、4: 橫3、8: 斜1、16: 斜2
     winflag: boolean[] = [false, false, false, false, false];
 
-    state: EGameState = EGameState.Ready;
+    private _state: EGameState = EGameState.Ready;
+    public get state(): EGameState {
+        return this._state;
+    }
+    public set state(value: EGameState) {
+        if (this._state == value) return;
+        switch (value) {
+            case EGameState.Scoring:
+                this.showResult();
+                break;
+        }
+        this._state = value;
+    }
 
     start() {
         this.initSpinButton();
@@ -105,14 +118,18 @@ export class GameManager extends Component {
         switch (this.state) {
             case EGameState.Ready:
                 this.state = EGameState.Spinning;
-                // this.spinButton.interactable = false;
                 this.slotMachine.startSpin();
-                // // 3秒後停止
-                // this.scheduleOnce(() => {
-                //     console.log('stop');
-                //     this.state = EGameState.Stopping;
-                //     this.slotMachine.stopSpin();
-                // }, 3);
+
+                for (let i = this.lineParent.children.length - 1; i >= 0; i--) {
+                    this._pool.put(this.lineParent.children[i]);
+                };
+
+                // 3秒後停止
+                this.scheduleOnce(() => {
+                    console.log('stop');
+                    this.state = EGameState.Stopping;
+                    this.slotMachine.stopSpin();
+                }, 1);
                 break;
 
             case EGameState.Spinning:
@@ -126,7 +143,7 @@ export class GameManager extends Component {
         }
     }
 
-    showResult() {
+    async showResult() {
         this.totalscore = 0;
         this.winflag.fill(false);
         this.winLines.forEach((line, index) => {
@@ -147,18 +164,13 @@ export class GameManager extends Component {
             }
         });
         this.scoreLabel.string = `${this.totalscore}`;
-        this.showWinLines();
+        await this.showWinLines();
     }
 
-    private showWinLines() {
+    private async showWinLines() {
         this.winflag.forEach((flag, index) => {
 
-            if (flag) {
-                console.log(`line: ${index}`);
-                lineResult(flag, index);
-            }
-
-            function lineResult(flag: boolean, index: number) {
+            const lineResult = (flag: boolean, index: number) => {
                 if (!flag) return;
 
                 let degree = 0;
@@ -182,13 +194,31 @@ export class GameManager extends Component {
                         degree = -45;
                         break;
                 }
-                const lineNode = this.getLine();
+                let lineNode = this.getLine();
                 lineNode.parent = this.lineParent;
                 lineNode.setPosition(0, positionY);
                 lineNode.setRotationFromEuler(0, 0, degree);
                 lineNode.active = true;
             }
+            if (flag) {
+                console.log(`line: ${index}`);
+                lineResult(flag, index);
+            }
         });
+        // TODO 用 tween
+        this.lineParent.active = true;
+        tween(this.node).delay(0.2).call(() => {
+            this.lineParent.active = false;
+        }).delay(0.2).call(() => {
+            this.lineParent.active = true;
+        }).delay(0.2).call(() => {
+            this.lineParent.active = false;
+        }).delay(0.2).call(() => {
+            this.lineParent.active = true;
+        }).call(() => {
+            this.state = EGameState.Ready;
+        })
+            .start();
     }
 
     onDestroy() {
@@ -200,4 +230,5 @@ export enum EGameState {
     Ready,
     Spinning,
     Stopping,
+    Scoring
 }
