@@ -13,6 +13,19 @@ export class Slot extends Component {
 
     reelWidth: number = 256;
 
+    private _currentResolve: (value: void | PromiseLike<void>) => void;
+
+    private _state: EGameState = EGameState.Ready;
+
+
+    public get state(): EGameState {
+        return this._state;
+    }
+    public set state(value: EGameState) {
+        if (this._state == value) return;
+        this._state = value;
+    }
+
     // 生成輪子
     initReels() {
         let count = -1;
@@ -27,7 +40,25 @@ export class Slot extends Component {
         }
     }
 
+    async onSpin() {
+
+        return new Promise<void>((resolve) => {
+            // 外包给update呼叫解決
+            this._currentResolve = resolve;
+
+            this.startSpin();
+        });
+    }
+
     async startSpin() {
+        console.log('start spin');
+        this.state = EGameState.Spinning;
+
+        // 2秒後停止
+        this.scheduleOnce(() => {
+            this.stopSpin();
+        }, 2);
+
         for (let index = 0; index < this.reels.length; index++) {
             const reel = this.reels[index];
             reel.spin();
@@ -39,6 +70,10 @@ export class Slot extends Component {
     }
 
     async stopSpin() {
+        console.log('stop spin');
+        this.unscheduleAllCallbacks();
+
+        this.state = EGameState.Stopping;
         for (let index = 0; index < this.reels.length; index++) {
             const reel = this.reels[index];
             reel.stop();
@@ -53,29 +88,30 @@ export class Slot extends Component {
         this.game = manager;
         this.initReels();
     }
-    updateHandler(state: EGameState, dt: number) {
-        switch (state) {
+
+    update(dt: number) {
+        switch (this.state) {
             case EGameState.Ready:
                 break;
             case EGameState.Spinning:
-                this.reels.forEach(reel => {
-                    reel.spinningHandler(dt);
-                });
-                break;
+            // this.reels.forEach(reel => {
+            //     // reel.spinningHandler(dt);
+            //     reel.newHandler(dt);
+            // });
+            // break;
             case EGameState.Stopping:
                 this.reels.forEach(reel => {
-                    reel.stoppingHandler(dt);
+                    // reel.stoppingHandler(dt);
+                    reel.newHandler(dt);
                 });
                 // 如果三個輪子都停下，換狀態
                 if (this.reels.every(r => { return r.reelStopped; })) {
-                    this.game.state = EGameState.Scoring;
+                    // 在這裡解決promise
+                    this._currentResolve();
                 }
-                break;
-            case EGameState.Scoring:
                 break;
             default:
                 break;
         }
     }
 }
-

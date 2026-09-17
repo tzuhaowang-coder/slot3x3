@@ -45,22 +45,8 @@ export class GameManager extends Component {
         [0, 4, 8],
         [2, 4, 6],
     ];
-    // 0: 都沒中、1: 橫1、2: 橫2、4: 橫3、8: 斜1、16: 斜2
-    winflag: boolean[] = [false, false, false, false, false];
 
-    private _state: EGameState = EGameState.Ready;
-    public get state(): EGameState {
-        return this._state;
-    }
-    public set state(value: EGameState) {
-        if (this._state == value) return;
-        switch (value) {
-            case EGameState.Scoring:
-                this.showResult();
-                break;
-        }
-        this._state = value;
-    }
+    winflag: boolean[] = [false, false, false, false, false];
 
     start() {
         this.initSpinButton();
@@ -69,27 +55,30 @@ export class GameManager extends Component {
         this.setResult();
     }
 
-    protected update(dt: number): void {
-        this.slotMachine.updateHandler(this.state, dt);
+    async onSpinClick() {
+        console.log('click');
+
+        switch (this.slotMachine.state) {
+            case EGameState.Ready:
+                // put 回池
+                for (let i = this.lineParent.children.length - 1; i >= 0; i--) {
+                    this._pool.put(this.lineParent.children[i]);
+                };
+                break;
+            case EGameState.Spinning:
+                // 提早停下
+                this.slotMachine.stopSpin();
+                return;
+            default:
+                return;
+        }
+
+        await this.slotMachine.onSpin();
+
+        this.showResult();
     }
 
-    private initSpinButton() {
-        let event = new EventHandler();
-        event.target = this.node;
-        event.component = `GameManager`;
-        event.handler = 'onSpinClick';
 
-        this.spinButton.clickEvents.push(event);
-    }
-
-    private initResultButton() {
-        let event = new EventHandler();
-        event.target = this.node;
-        event.component = `GameManager`;
-        event.handler = 'onSetResultClick';
-
-        this.setResultButton.clickEvents.push(event);
-    }
 
     onSetResultClick() {
         this.resultArray = this.setResultEditBox.string.split(',').map(Number);
@@ -102,44 +91,12 @@ export class GameManager extends Component {
 
         // set Result to reels
         for (let i = 0; i < this.slotMachine.reels.length; i++) {
-            let index = i;
             tempArray = [];
-            do {
-                tempArray.push(this.resultArray[index]);
-                index += 3;
-            } while (index < this.resultArray.length);
-            // console.log(`reel: ${i}, tempArray: ${tempArray}`);
+            for (let j = 0; j < this.resultArray.length; j += 3) {
+                tempArray.push(this.resultArray[i + j]);
+            }
+            console.log(`reel: ${i}, tempArray: ${tempArray}`);
             this.slotMachine.reels[i].setResultSymbols(tempArray);
-        }
-    }
-
-    onSpinClick() {
-        console.log('click');
-        switch (this.state) {
-            case EGameState.Ready:
-                this.state = EGameState.Spinning;
-                this.slotMachine.startSpin();
-
-                for (let i = this.lineParent.children.length - 1; i >= 0; i--) {
-                    this._pool.put(this.lineParent.children[i]);
-                };
-
-                // 3秒後停止
-                this.scheduleOnce(() => {
-                    console.log('stop');
-                    this.state = EGameState.Stopping;
-                    this.slotMachine.stopSpin();
-                }, 1);
-                break;
-
-            case EGameState.Spinning:
-                this.unscheduleAllCallbacks();
-                this.slotMachine.stopSpin();
-                this.state = EGameState.Stopping;
-                break;
-
-            default:
-                break;
         }
     }
 
@@ -216,9 +173,27 @@ export class GameManager extends Component {
         }).delay(0.2).call(() => {
             this.lineParent.active = true;
         }).call(() => {
-            this.state = EGameState.Ready;
+            this.slotMachine.state = EGameState.Ready;
         })
             .start();
+    }
+
+    private initSpinButton() {
+        let event = new EventHandler();
+        event.target = this.node;
+        event.component = `GameManager`;
+        event.handler = 'onSpinClick';
+
+        this.spinButton.clickEvents.push(event);
+    }
+
+    private initResultButton() {
+        let event = new EventHandler();
+        event.target = this.node;
+        event.component = `GameManager`;
+        event.handler = 'onSetResultClick';
+
+        this.setResultButton.clickEvents.push(event);
     }
 
     onDestroy() {
@@ -230,5 +205,4 @@ export enum EGameState {
     Ready,
     Spinning,
     Stopping,
-    Scoring
 }
